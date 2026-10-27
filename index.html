@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coldworks design reference</title>
+<meta name="description" content="Architecture, record model, extraction lanes, rungs, phases, roadmap, and proposed ideas for Coldworks, as of 2026-10-26.">
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-side: #f7f8fa;
+  --text: #1a1f36;
+  --muted: #5e6a7d;
+  --border: #e3e8ee;
+  --accent: #2563c9;
+  --accent-soft: #e8f0fc;
+  --panel: #18202f;
+  --panel-head: #222c3f;
+  --panel-text: #d5dcea;
+  --panel-muted: #8a96ad;
+  --key: #8fc1ff;
+  --str: #a8dba8;
+  --num: #f2c18d;
+  --built-bg: #e3f6ea; --built-fg: #17683a;
+  --ruled-bg: #e6eefc; --ruled-fg: #1f4fa3;
+  --proposed-bg: #fdf1dc; --proposed-fg: #8a5300;
+  --gated-bg: #f1eff8; --gated-fg: #5a4a99;
+  --archived-bg: #eef0f3; --archived-fg: #535d6c;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141d; --bg-side: #131a25; --text: #e4e9f2; --muted: #95a1b5;
+    --border: #253043; --accent: #7aa7ff; --accent-soft: #1b2a45;
+    --panel: #0a0f17; --panel-head: #141c2a;
+    --built-bg: #143524; --built-fg: #8fe0ad;
+    --ruled-bg: #172a4d; --ruled-fg: #a9c6ff;
+    --proposed-bg: #3a2a0e; --proposed-fg: #f3c777;
+    --gated-bg: #2a2445; --gated-fg: #c4b8f5;
+    --archived-bg: #232a35; --archived-fg: #a9b2c0;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141d; --bg-side: #131a25; --text: #e4e9f2; --muted: #95a1b5;
+  --border: #253043; --accent: #7aa7ff; --accent-soft: #1b2a45;
+  --panel: #0a0f17; --panel-head: #141c2a;
+  --built-bg: #143524; --built-fg: #8fe0ad;
+  --ruled-bg: #172a4d; --ruled-fg: #a9c6ff;
+  --proposed-bg: #3a2a0e; --proposed-fg: #f3c777;
+  --gated-bg: #2a2445; --gated-fg: #c4b8f5;
+  --archived-bg: #232a35; --archived-fg: #a9b2c0;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--sans); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font: 0.86em var(--mono); background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+
+.side {
+  position: fixed; inset: 0 auto 0 0; width: 248px; overflow-y: auto;
+  background: var(--bg-side); border-right: 1px solid var(--border); padding: 22px 16px 40px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; margin: 0 8px 4px; }
+.brand svg { flex: none; }
+.asof { margin: 0 8px 20px; color: var(--muted); font-size: 12.5px; }
+.side h4 { margin: 18px 8px 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.side a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--text); font-size: 14px; }
+.side a:hover { background: var(--accent-soft); text-decoration: none; }
+.side a.active { color: var(--accent); font-weight: 600; background: var(--accent-soft); }
+
+.menu-btn { display: none; }
+main { margin-left: 248px; }
+
+.doc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-bottom: 1px solid var(--border); }
+.prose { padding: 44px 44px 48px; max-width: 760px; }
+.panel-col { padding: 44px 32px 48px 0; }
+.panel-col .sticky { position: sticky; top: 24px; display: grid; gap: 18px; }
+.doc.wide { grid-template-columns: minmax(0, 1fr); }
+.doc.wide .prose { max-width: 1180px; }
+
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 12px; letter-spacing: -.01em; }
+h2 { font-size: 22px; line-height: 1.25; margin: 0 0 12px; letter-spacing: -.005em; }
+h3 { font-size: 15.5px; margin: 26px 0 8px; }
+p { margin: 0 0 12px; }
+.lead { font-size: 17px; color: var(--text); }
+.muted { color: var(--muted); }
+ul, ol { margin: 0 0 12px; padding-left: 20px; }
+li { margin: 3px 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 6px 0 16px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--border); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td:first-child { white-space: nowrap; }
+.scroll { overflow-x: auto; }
+
+.badge { display: inline-block; font-size: 11px; font-weight: 650; line-height: 1; padding: 4px 7px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+.built { background: var(--built-bg); color: var(--built-fg); }
+.ruled { background: var(--ruled-bg); color: var(--ruled-fg); }
+.proposed { background: var(--proposed-bg); color: var(--proposed-fg); }
+.gated { background: var(--gated-bg); color: var(--gated-fg); }
+.archived { background: var(--archived-bg); color: var(--archived-fg); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 16px 0 6px; font-size: 13px; color: var(--muted); }
+.legend span.badge { margin-right: 5px; }
+
+.attr { border-top: 1px solid var(--border); margin-top: 8px; }
+.attr > div { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.attr .name { font: 600 13.5px var(--mono); }
+.attr .type { color: var(--muted); font-size: 12.5px; margin-left: 8px; }
+.attr p { margin: 4px 0 0; font-size: 14px; }
+
+.panel { background: var(--panel); color: var(--panel-text); border-radius: 10px; overflow: hidden; font: 12.5px/1.6 var(--mono); }
+.panel .head { background: var(--panel-head); color: var(--panel-muted); padding: 9px 14px; font: 600 11.5px var(--sans); letter-spacing: .04em; text-transform: uppercase; }
+.panel pre { margin: 0; padding: 14px; overflow-x: auto; white-space: pre; }
+.panel .c { color: var(--panel-muted); }
+.panel .k { color: var(--key); }
+.panel .s { color: var(--str); }
+.panel .n { color: var(--num); }
+
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin: 8px 0 16px; }
+.card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.card h3 { margin: 6px 0 6px; font-size: 14.5px; }
+.card p { font-size: 13.5px; margin: 0; color: var(--muted); }
+
+footer { padding: 28px 44px 60px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 1100px) {
+  .doc { grid-template-columns: minmax(0, 1fr); }
+  .panel-col { padding: 0 44px 44px; }
+  .panel-col .sticky { position: static; }
+}
+@media (max-width: 820px) {
+  .side { transform: translateX(-100%); transition: transform .2s; z-index: 20; box-shadow: 0 0 24px rgba(0,0,0,.2); }
+  .side.open { transform: none; }
+  main { margin-left: 0; }
+  .menu-btn {
+    display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 10; width: 100%;
+    padding: 12px 16px; background: var(--bg-side); color: var(--text); border: 0; border-bottom: 1px solid var(--border);
+    font: 600 14px var(--sans); cursor: pointer;
+  }
+  .prose { padding: 28px 16px 32px; }
+  .panel-col { padding: 0 16px 32px; }
+  footer { padding: 24px 16px 48px; }
+  h1 { font-size: 25px; }
+  td:first-child { white-space: normal; }
+}
+</style>
+</head>
+<body>
+
+<button class="menu-btn" id="menu-btn" aria-controls="side" aria-expanded="false">
+  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  Coldworks design reference
+</button>
+
+<nav class="side" id="side" aria-label="Sections">
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M11 5v12M5.8 8l10.4 6M5.8 14l10.4-6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+    Coldworks
+  </div>
+  <p class="asof">Design reference · as of 2026-10-26</p>
+
+  <h4>Start here</h4>
+  <a href="#overview">Overview</a>
+  <a href="#vision">Vision</a>
+
+  <h4>System</h4>
+  <a href="#architecture">Architecture</a>
+  <a href="#moments">The four moments</a>
+  <a href="#checks">Deterministic checks</a>
+
+  <h4>Model</h4>
+  <a href="#record">The record</a>
+  <a href="#sources">Sources and force</a>
+  <a href="#record-types">Record types</a>
+
+  <h4>Build</h4>
+  <a href="#lanes">Extraction lanes</a>
+  <a href="#rungs">Rungs</a>
+  <a href="#phases">Phases and stages</a>
+  <a href="#roadmap">Roadmap</a>
+
+  <h4>Ahead</h4>
+  <a href="#future">Future state</a>
+  <a href="#ideas">Proposed ideas</a>
+  <a href="#gates">Unproven, carried as gates</a>
+  <a href="#not-build">What not to build</a>
+  <a href="#decisions">Decision records</a>
+</nav>
+
+<main>
+
+<!-- Overview -->
+<section class="doc" id="overview">
+  <div class="prose">
+    <h1>Coldworks design reference</h1>
+    <p class="lead">Coldworks keeps one record of what a repository's people and agents decide, grades each decision by what happens after it merges, and turns work that keeps holding into a brief, a recipe, or a check that runs without a model.</p>
+    <p>The thesis is to use AI to reduce AI: compile repeated agent work into deterministic artifacts, and prove each one by the model calls it removes. The lead number is <code>T</code>, the share of decisions a model still makes. A falling <code>T</code> means the product is working.</p>
+    <p>This page describes the design as it stands on 2026-10-26. Most of it is designed, not built. Every item carries one of these statuses:</p>
+    <div class="legend">
+      <div><span class="badge built">Built</span>Merged and tested</div>
+      <div><span class="badge ruled">Ruled</span>Decided by the founder</div>
+      <div><span class="badge proposed">Proposed</span>Written, not signed</div>
+      <div><span class="badge gated">Gated</span>Waits on a bar or a signature</div>
+      <div><span class="badge archived">Archived</span>Evidence only</div>
+    </div>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">At a glance</div><pre><span class="k">input</span>     a commit
+<span class="k">output</span>    one line at the moment it matters
+<span class="k">write</span>     commit  <span class="c"># the only write verb</span>
+<span class="k">record</span>    append-only, one ledger per repository
+<span class="k">grade</span>     outcomes: merge, revert  <span class="c"># never a person</span>
+<span class="k">cold</span>      brief · recipe · check
+<span class="k">metric</span>    T = decisions resolved by a model
+          ─────────────────────────────
+              all decisions, from receipts</pre></div>
+    <div class="panel"><div class="head">Try the first piece</div><pre><span class="c"># Built in the private repository, not released:</span>
+<span class="c"># the session readers' coverage report over the</span>
+<span class="c"># files your coding agent keeps on disk.</span>
+$ coldworks sessions
+<span class="c"># reads ~/.claude/projects and ~/.codex/sessions</span>
+
+$ coldworks sessions --home DIR</pre></div>
+  </div></div>
+</section>
+
+<!-- Vision -->
+<section class="doc" id="vision">
+  <div class="prose">
+    <h2>Vision</h2>
+    <p>Agent work repeats in three ways. Each kind has a hot form that a model performs every time and a cold form that runs without a model after the record shows it keeps holding.</p>
+    <div class="scroll"><table>
+      <thead><tr><th></th><th>Looking</th><th>Doing</th><th>Judging</th></tr></thead>
+      <tbody>
+        <tr><td>Hot form</td><td>Re-reading files, re-deriving settled decisions</td><td>Re-constructing an accepted multi-file change</td><td>A model read of every instance</td></tr>
+        <tr><td>Cold form</td><td>The brief at session start; the never-reopen push</td><td>A recipe: typed, bounded, replayed, signed</td><td>A check: CEL eligibility, declares what it enforces</td></tr>
+        <tr><td>Bar</td><td>Beats token-matched context stuffing and a committed <code>AGENTS.md</code></td><td>Net savings against a strong baseline, measured prospectively</td><td>Replay on history, paired mutations, a holdout error bound, a signature</td></tr>
+        <tr><td>Deopt</td><td>A contradicting commit demotes the record to contested</td><td>Unfamiliar work returns to the agent</td><td>A miss deopts the check</td></tr>
+      </tbody>
+    </table></div>
+    <p>The measurements set the build order. Navigation is the largest share of agent context on every corpus measured: 41.6% on SWE-agent and 54.9% to 60.3% on Claude Code. Repeated judgment is rare: 0.97% of context on one developer's 1,291 Claude Code calls. So the build goes looking first and judging last.</p>
+
+    <h3>Five rules of the experience</h3>
+    <ol>
+      <li><strong>Nothing to file.</strong> You never enter a decision or approve a memory. A commit is the only way to tell the product anything.</li>
+      <li><strong>Nothing to read unless it changes what you do next.</strong> You get one line at the moment it matters, with the evidence one click away.</li>
+      <li><strong>Nothing to configure.</strong> One command installs the hook, and the record is files in your repository.</li>
+      <li><strong>A number is honest or absent.</strong> Every figure has a denominator and a provenance. If a figure can't be computed, you see why, never a zero.</li>
+      <li><strong>It is yours.</strong> Cold artifacts run in your own CI. Cancelling never changes a check's status.</li>
+    </ol>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Derivation, grading, cooling</div><pre><span class="k">commits</span>   ──derive──▶  decisions + evidence
+<span class="k">outcomes</span>  ──grade───▶  force
+                         settled · advisory
+                         historical · contested
+<span class="k">holding</span>   ──cool────▶  brief · recipe · check
+<span class="k">subtract</span>  ──prove───▶  model calls not made</pre></div>
+    <div class="panel"><div class="head">The bracket figures</div><pre><span class="c"># T counts decisions only. Looking and doing</span>
+<span class="c"># appear beside it as brackets: seen, never a</span>
+<span class="c"># pass condition.  Status: proposed.</span>
+
+<span class="k">T</span>         <span class="n">0.88</span>   <span class="c"># illustrative</span>
+<span class="k">looking</span>   <span class="n">0.31</span>   <span class="c"># bracket</span>
+<span class="k">doing</span>     <span class="n">0.62</span>   <span class="c"># bracket</span></pre></div>
+  </div></div>
+</section>
+
+<!-- Architecture -->
+<section class="doc" id="architecture">
+  <div class="prose">
+    <h2>Architecture</h2>
+    <p>Coldworks is one private Go monorepo, <code>coldworkshq/coldworks</code>, scaffolded on 2026-10-25. Each directory's language follows where its code runs. <span class="badge ruled">Ruled 2026-10-19</span></p>
+    <ul>
+      <li><strong>Go</strong>: Every service and every binary that runs in a customer's environment.</li>
+      <li><strong>Python</strong>: <code>lab/</code> only. Research reads and writes IR records and never serves a request.</li>
+      <li><strong>TypeScript</strong>: <code>web/</code> only.</li>
+    </ul>
+    <div class="scroll"><table>
+      <thead><tr><th>Directory</th><th>Holds</th><th>State</th></tr></thead>
+      <tbody>
+        <tr><td><code>spec/</code></td><td>IR v0.3.0, the wire, the envelope, open conformance fixtures</td><td><span class="badge built">Built</span></td></tr>
+        <tr><td><code>spine/</code></td><td>Events, jobs, records, the frontmatter parser, grading, row-level security; the hosted runtime</td><td><span class="badge built">Partly built</span></td></tr>
+        <tr><td><code>local/</code></td><td>The hook, session readers, local runtime, brief, never-reopen push, recipe runner; one static binary</td><td><span class="badge built">Partly built</span></td></tr>
+        <tr><td><code>engine/</code></td><td>Replay, paired mutations, the holdout bound, promotion; offline, on <code>cel-go</code></td><td><span class="badge proposed">Next</span></td></tr>
+        <tr><td><code>reviews/</code></td><td>The reader, settlement, hunk identity, adjudicator, check-run renderer, miner</td><td><span class="badge proposed">Last</span></td></tr>
+        <tr><td><code>lab/</code></td><td>The wind tunnel, backtests, and probes, in Python</td><td><span class="badge proposed">Not started</span></td></tr>
+        <tr><td><code>web/</code></td><td>The one shell (Overview, Reviews, Memory, Guards) and the landing; reads a versioned contract only</td><td><span class="badge proposed">Not started</span></td></tr>
+        <tr><td><code>evidence/</code></td><td>Every published figure's snapshot, with its SHA-256 and source commit</td><td><span class="badge proposed">Not started</span></td></tr>
+      </tbody>
+    </table></div>
+    <h3>Dependency direction</h3>
+    <p>The spine owns the records and everything else reads them. Imports run spine, then engine, then local and reviews. The store holds no model client, so a model swap is never a store release. Replay in <code>engine/</code> makes no network call. The <code>layers</code> check enforces all three rules at merge.</p>
+    <h3>Deployment</h3>
+    <p>Clouds at launch are AWS, GCP, and DigitalOcean. The Go SDK reaches the first-party API, Amazon Bedrock, Claude Platform on AWS, and Google Vertex AI, so a customer can use their own model endpoint. A parity spike on 2026-10-19 found no blocker across the five launch transports; no live call was made.</p>
+    <p>The repository never becomes public, because its history holds <code>spine/</code> and <code>engine/</code>. The open parts publish as a separate public repository at Phase 3.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Repository layout</div><pre>coldworks/
+├── spec/           <span class="c">JSON Schema · IR v0.3.0</span>
+├── spine/          <span class="c">Go · records, wire, store</span>
+│   ├── wire/
+│   ├── store/      <span class="c">Postgres, RLS forced</span>
+│   └── frontmatter/
+├── local/          <span class="c">Go · one static binary</span>
+│   ├── cmd/coldworks/
+│   └── sessions/   <span class="c">Claude Code, Codex</span>
+├── engine/         <span class="c">Go · offline, cel-go</span>
+├── reviews/        <span class="c">Go · rebuilt last</span>
+├── lab/            <span class="c">Python · research only</span>
+├── web/            <span class="c">TypeScript · the shell</span>
+├── evidence/       <span class="c">snapshots + SHA-256</span>
+├── docs/decisions/ <span class="c">ADR 0001…</span>
+└── tools/check/    <span class="c">self-tested rules</span></pre></div>
+    <div class="panel"><div class="head">Import direction</div><pre>        spine
+          │
+        engine           <span class="c"># no network, no model</span>
+        ╱    ╲
+    local    reviews     <span class="c"># model calls live here</span>
+
+<span class="c"># tools/ is imported by nothing</span></pre></div>
+  </div></div>
+</section>
+
+<!-- Four moments -->
+<section class="doc" id="moments">
+  <div class="prose">
+    <h2>The four moments</h2>
+    <p>The product is what happens at four moments, all over one record:</p>
+    <ol>
+      <li><strong>Before the agent starts.</strong> The brief lists the decisions the session is likely to touch, the recipes available, and stale lines in the agent instruction files. Code selects it from the files at hand and holds it under about 2,000 tokens. A model never selects it, because a model-selected summary scored below no context at all.</li>
+      <li><strong>While it works.</strong> The never-reopen push fires when a session approaches a settled decision's evidence. <code>run</code> on a recipe is the one tool the agent pulls.</li>
+      <li><strong>At review.</strong> Reviews reads the record before the diff. A pull request that crosses a settled decision carries a contradiction section. Nothing blocks.</li>
+      <li><strong>After the merge.</strong> The deriver writes the decision with its spans. Outcomes grade it over 14 and 60 days. The miner clusters repeats, and the engine drafts a check or recipe, replays it on history, and waits for a signature.</li>
+    </ol>
+    <div class="callout">Push, never pull. Context reaches the agent through hooks and server instructions. A tool the model calls to ask spends more tokens every time.</div>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">The brief, at session start</div><pre><span class="c"># illustrative output; status: proposed</span>
+Decided 2026-09-04, settled: refuse the process
+  share above 20% compound shell calls.
+  Unchanged through 14 merges.
+Recipe available: add a webhook handler,
+  used 6 times, last on 2026-10-11.
+2 lines in AGENTS.md name files that no
+  longer exist.</pre></div>
+    <div class="panel"><div class="head">The never-reopen push</div><pre>This reopens a settled decision; the
+evidence is here. Say reopen to proceed.</pre></div>
+  </div></div>
+</section>
+
+<!-- Checks -->
+<section class="doc" id="checks">
+  <div class="prose">
+    <h2>Deterministic checks</h2>
+    <p><code>make check</code> runs <code>gofmt</code>, <code>go vet</code>, the build, <code>go test -race -shuffle=on</code>, and ten repository rules in <code>tools/check</code>. <span class="badge built">Built</span></p>
+    <p>Each rule is decidable from the tree alone, with no model and no network. Each one fails on a planted bad input under <code>tools/check/testdata/bad/</code>, proved by the tool's own tests. A rule that can't be shown to come out wrong isn't added.</p>
+    <p>Planned additions each wait on something the scaffold lacks: coverage and suppression ratchets need a merge base, allocation budgets need a hot path, determinism of derivation needs the deriver, and a binary size budget needs the first release binary.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">tools/check rules</div><pre><span class="k">nostate</span>     no package-level vars in libraries
+<span class="k">noinit</span>      no init functions
+<span class="k">nopanic</span>     panic only in package main
+<span class="k">docs</span>        every package and export documented
+<span class="k">complexity</span>  at most 12 branches per function
+<span class="k">layers</span>      import direction; no model client
+            in spine/ or engine/
+<span class="k">suppress</span>    no //nolint, no //lint:ignore
+<span class="k">adr</span>         contiguous ids, closed statuses
+<span class="k">surface</span>     paths in CLAUDE.md exist at HEAD
+<span class="k">schemas</span>     additionalProperties: false</pre></div>
+  </div></div>
+</section>
+
+<!-- Record -->
+<section class="doc" id="record">
+  <div class="prose">
+    <h2>The record</h2>
+    <p>The record is one append-only ledger per repository. The only write verb is a commit. A correction, a state change, or a supersession is a new record, never an update. <span class="badge built">IR v0.3.0 schema built</span> <span class="badge proposed">Signature pending</span></p>
+    <p>Conceptually, the record holds five kinds of entry:</p>
+    <div class="attr">
+      <div><span class="name">decision</span><span class="type">derived</span><p>What was decided, derived from a merged pull request or a committed document, with evidence spans that point at the lines. Never entered by hand.</p></div>
+      <div><span class="name">evidence</span><span class="type">observed</span><p>Spans, diff hunks, a model's verdict, and the falsifier that settled a finding.</p></div>
+      <div><span class="name">outcome</span><span class="type">graded</span><p>Merge and revert, read from git. The adjudicator is a pure function of merge time and the revert map, with no clock and no network. Hotfix detection doesn't exist yet.</p></div>
+      <div><span class="name">cold artifact</span><span class="type">guard</span><p>A recipe or a check, with its qualification report, activation signature, and subtraction.</p></div>
+      <div><span class="name">session link</span><span class="type">link</span><p>A session joined to the merged commitment it preceded, keyed by a commit trailer. A session's claims stay advisory until a commit corroborates them.</p></div>
+    </div>
+    <h3>Normative rules</h3>
+    <ul>
+      <li>Every record is append-only.</li>
+      <li>The store resolves <code>tenant_id</code> and <code>container_id</code> from facts the producer can't forge. A producer never asserts them.</li>
+      <li>Force and links are derived at read time, never stored.</li>
+      <li>Payload schemas are closed per type version. The store parks an unknown version instead of failing it.</li>
+      <li>Idempotency is <code>UNIQUE (tenant_id, idempotency_key)</code>, so one tenant can't suppress another's write.</li>
+    </ul>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">A decision record · spec/fixtures/0.3.0/valid</div><pre>{
+  <span class="k">"schema_version"</span>: <span class="s">"0.3.0"</span>,
+  <span class="k">"record_type"</span>: <span class="s">"decision"</span>,
+  <span class="k">"id"</span>: <span class="s">"00000002-…-000000000002"</span>,
+  <span class="k">"tenant_id"</span>: <span class="s">"11111111-…"</span>,
+  <span class="k">"container_id"</span>: <span class="s">"22222222-…"</span>,
+  <span class="k">"pack"</span>: <span class="s">"repo"</span>,
+  <span class="k">"idempotency_key"</span>: <span class="s">"decision:decision_doc"</span>,
+  <span class="k">"occurred_at"</span>: <span class="s">"2026-10-25T18:00:00Z"</span>,
+  <span class="k">"source"</span>: {
+    <span class="k">"kind"</span>: <span class="s">"doc"</span>,
+    <span class="k">"github_repo_id"</span>: <span class="n">7</span>,
+    <span class="k">"path"</span>: <span class="s">"docs/decisions/0001-fresh-repository.md"</span>,
+    <span class="k">"sha"</span>: <span class="s">"b1c55ba0…"</span>
+  },
+  <span class="k">"body"</span>: {
+    <span class="k">"title"</span>: <span class="s">"A fresh repository, and what it carries"</span>,
+    <span class="k">"status"</span>: <span class="s">"proposed"</span>,
+    <span class="k">"ref"</span>: <span class="s">"docs/decisions/0001-…md@b1c55ba0…"</span>,
+    <span class="k">"spans"</span>: [{
+      <span class="k">"path"</span>: <span class="s">"docs/decisions/0001-fresh-repository.md"</span>,
+      <span class="k">"start_line"</span>: <span class="n">1</span>, <span class="k">"end_line"</span>: <span class="n">1</span>,
+      <span class="k">"quote"</span>: <span class="s">"status: proposed"</span>
+    }]
+  }
+}</pre></div>
+  </div></div>
+</section>
+
+<!-- Sources and force -->
+<section class="doc" id="sources">
+  <div class="prose">
+    <h2>Sources and force</h2>
+    <p>Every record has exactly one source. Force, which says how much a record is to be believed, is a pure function of the source variant and two demotion facts. Only <code>settled</code> governs.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Source</th><th>What it is</th><th>Highest force</th></tr></thead>
+      <tbody>
+        <tr><td><code>pr</code></td><td>A merged pull request, the canonical commitment</td><td>settled</td></tr>
+        <tr><td><code>commit</code></td><td>A commit that reached the default branch</td><td>settled</td></tr>
+        <tr><td><code>doc</code></td><td>A document at HEAD under the repository's merge governance</td><td>settled</td></tr>
+        <tr><td><code>session</code></td><td>An agent session capture</td><td>advisory</td></tr>
+        <tr><td><code>inherited</code></td><td>A settled record from another repository in the same organization</td><td>advisory</td></tr>
+        <tr><td><code>observed</code></td><td>A trace, a judgment, or a receipt from an instrument</td><td>none</td></tr>
+      </tbody>
+    </table></div>
+    <p>A session can never be settled by construction. Session text is attacker-writable, so this rule keeps it out of what the reader trusts. An inherited record never changes force. Corroboration mints a new settled record from the inheriting repository's own commit.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Closed vocabularies</div><pre><span class="k">Force</span>     settled | advisory | historical | contested
+<span class="k">Status</span>    proposed | accepted | superseded
+          | deprecated | rejected
+<span class="k">Relation</span>  supersedes | session_of | corroborates
+          | cites | inherits
+<span class="k">Origin</span>    write_time | imported | recovered</pre></div>
+  </div></div>
+</section>
+
+<!-- Record types -->
+<section class="doc" id="record-types">
+  <div class="prose">
+    <h2>Record types</h2>
+    <p>IR v0.3.0 has a closed vocabulary of 15 record types. A registry row is <code>(record_type, schema_version)</code>, so registering a new type is additive. The fixtures under <code>spec/fixtures/0.3.0/</code> cover valid records, records the validator must reject, and reads.</p>
+    <div class="attr">
+      <div><span class="name">decision</span><p>What a repository decided, from one commitment or one session.</p></div>
+      <div><span class="name">input_state · trace · artifact</span><p>The immutable state work ran against, one hot-tier run indexed into content-addressed storage, and deterministic content an agent or recipe produced.</p></div>
+      <div><span class="name">judgment · fingerprint · cluster · cluster_claim</span><p>A model's or a check's answer to one predicate, its similarity per tenant, and a hypothesized repeat. Frequency alone never moves a cluster's state; a discriminator does.</p></div>
+      <div><span class="name">outcome</span><p>What observably happened, joined to the exact input state.</p></div>
+      <div><span class="name">guard · qualification · receipt</span><p>A check or recipe's registry entry, every case of its qualification run, and a receipt per dispatched task that names which tier handled each unit.</p></div>
+      <div><span class="name">link · attestation · redaction</span><p>A graph edge between records, an in-toto derivation attestation, and a provable delete that keeps the envelope.</p></div>
+    </div>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Validate the fixtures</div><pre><span class="c"># in the private repository;</span>
+<span class="c"># spec/ conformance runs in make check</span>
+$ make check
+
+<span class="c"># store isolation tests need Postgres 17</span>
+$ make check-db</pre></div>
+  </div></div>
+</section>
+
+<!-- Extraction lanes -->
+<section class="doc" id="lanes">
+  <div class="prose">
+    <h2>Extraction lanes</h2>
+    <p>The new repository carries evidence, not code. The archived repositories are reference material. Each carried item arrives by its own pull request, which names its source commit, its tests, and the figure it protects. Nothing is copied in bulk or by <code>git subtree</code>. Outside <code>lab/</code>, <code>spec/</code>, <code>spine/</code>, and <code>web/</code>, each item is a Go rebuild that uses the old tests and fixtures as its specification.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Lane</th><th>From</th><th>To</th><th>State</th></tr></thead>
+      <tbody>
+        <tr><td>IR and fixtures</td><td>The archived engine's spec, the archived store's wire</td><td><code>spec/</code></td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>Wire and store</td><td>The archived store, re-keyed to v0.3.0</td><td><code>spine/wire</code>, <code>spine/store</code></td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>Frontmatter parser</td><td>lema's ADR parser, 16 tests carried and 6 added</td><td><code>spine/frontmatter</code></td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>Session readers</td><td>New: Claude Code and Codex</td><td><code>local/sessions</code></td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>Local runtime</td><td>The archived local tool, the audit CLI, the export gate</td><td><code>local/</code></td><td><span class="badge gated">Gated</span></td></tr>
+        <tr><td>Engine</td><td>The archived engine and its executor</td><td><code>engine/</code></td><td><span class="badge proposed">Next</span></td></tr>
+        <tr><td>Reviewer</td><td>The archived reviewer's service</td><td><code>reviews/</code></td><td><span class="badge proposed">Last</span></td></tr>
+        <tr><td>Research harness</td><td>The wind tunnel, backtests, probes</td><td><code>lab/</code></td><td><span class="badge proposed">Planned</span></td></tr>
+        <tr><td>Shell</td><td>The archived web app, the registry contract</td><td><code>web/</code></td><td><span class="badge proposed">Planned</span></td></tr>
+        <tr><td>Evidence</td><td>Export-gate files, prereg hashes, M4 harness</td><td><code>evidence/</code></td><td><span class="badge gated">Gated</span></td></tr>
+      </tbody>
+    </table></div>
+    <p>The M4 gate transcript is lost, so <code>engine/</code> reruns the M4 suite and the five-seed drift under v0.3.0 before <code>evidence/</code> quotes that figure.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Build order</div><pre><span class="c"># looking first, judging last</span>
+<span class="n">1</span>  spec/ + spine/     <span class="s">done</span>
+<span class="n">2</span>  local/             <span class="s">readers done</span>
+<span class="n">3</span>  engine/  on cel-go
+<span class="n">4</span>  reviews/           <span class="c"># rebuilt last</span></pre></div>
+    <div class="panel"><div class="head">Every carry PR names</div><pre><span class="k">source</span>    repository@commit
+<span class="k">tests</span>     carried + added
+<span class="k">protects</span>  the figure it keeps honest</pre></div>
+  </div></div>
+</section>
+
+<!-- Rungs -->
+<section class="doc" id="rungs">
+  <div class="prose">
+    <h2>Rungs</h2>
+    <p>The product climbs from one engineer to an organization. Each rung adds one sensor and one signature, by the same mechanism: a commitment grades the record, and a signature cools it. <span class="badge proposed">Proposed</span></p>
+    <div class="scroll"><table>
+      <thead><tr><th>Rung</th><th>Who and what they install</th><th>What they get</th></tr></thead>
+      <tbody>
+        <tr><td>0: one engineer</td><td>A developer. One command, then a hook. No account; nothing leaves the machine.</td><td>Day one: a report over session files already on disk, joined to git. Then the brief and the never-reopen push, after the kill bar is locked.</td></tr>
+        <tr><td>1: the repository</td><td>A maintainer installs the GitHub App.</td><td>A neutral verdict and check run on each pull request; outcome counts after the first 14-day window; <code>T</code> on Overview.</td></tr>
+        <tr><td>2: the team</td><td>The App on the organization; one maintainer's signature.</td><td>The record shared through git, the session index, and promotion of a recipe or check for the whole team after a shadow period.</td></tr>
+        <tr><td>3: the organization</td><td>Platform or engineering leadership; more repositories.</td><td>Inheritance across repositories at advisory force, and receipts per team.</td></tr>
+      </tbody>
+    </table></div>
+    <p>A day-30 count of returning rung-0 users is pre-registered with a kill condition before any rung-0 code ships.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">What moves a user up, or keeps them</div><pre><span class="k">0</span>  the number crosses a bar they can see,
+   or a push stops a re-litigation
+<span class="k">1</span>  the first contested decision, found
+   by a revert
+<span class="k">2</span>  the first check whose shadow chart
+   cleared
+<span class="k">3</span>  the second repository: inheritance
+   exists only at two</pre></div>
+  </div></div>
+</section>
+
+<!-- Phases -->
+<section class="doc" id="phases">
+  <div class="prose">
+    <h2>Phases and stages</h2>
+    <p>Two ladders run in parallel. Phases come from the architecture RFC and gate the company. Stages come from the store's integration plan and gate the record.</p>
+    <h3>Phases</h3>
+    <p class="muted">Status as of 2026-09-26. The RFC predates the 2026-10-19 restructuring, so Phase 3 now means a separate public repository for the open parts.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Phase</th><th>Gate</th><th>State</th></tr></thead>
+      <tbody>
+        <tr><td>PoC: wind tunnel</td><td>M0 to M4 and M6 pass on the synthetic corpus. M0 to M3 passed; M4 passes 13 of 14 clauses; M6 passed 6 of 6 on an in-house vocabulary.</td><td><span class="badge built">Done</span></td></tr>
+        <tr><td>0: freeze the seam</td><td>The IR expresses every finding with no PR-specific fields in core types. IR v0.2.0 was signed 2026-08-18.</td><td><span class="badge built">Done</span></td></tr>
+        <tr><td>1: read across the gap</td><td>A foreign export normalizes end to end, and its guards clear the same bars as native ones.</td><td><span class="badge gated">Needs one outside export</span></td></tr>
+        <tr><td>2: hand-forge guards</td><td>Three hand-written guards survive two weeks of shadow; one is promoted; deopt is observed live.</td><td><span class="badge proposed">Not started</span></td></tr>
+        <tr><td>3: open-source launch</td><td>A stranger installs from the README in under 30 minutes; the spec is published and versioned.</td><td><span class="badge proposed">Not started</span></td></tr>
+        <tr><td>4: crystallizer v0</td><td>Candidates from real traces survive sealed replay and mutations on live repositories.</td><td><span class="badge proposed">Not started</span></td></tr>
+        <tr><td>5: hosted v1</td><td>Paying demand from open-source installs.</td><td><span class="badge proposed">Not started</span></td></tr>
+        <tr><td>6: second pack</td><td>A second pack ships with the core unchanged or changed only additively.</td><td><span class="badge proposed">Not started</span></td></tr>
+      </tbody>
+    </table></div>
+    <h3>Stages</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Stage</th><th>What it gates</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>The signed contract. IR v0.3.0 reopens it once, by design.</td></tr>
+        <tr><td>1</td><td>The envelope and the port; lexical search only, flagged degraded.</td></tr>
+        <tr><td>2</td><td>Derivation: the <code>derive_jobs</code> seam.</td></tr>
+        <tr><td>3</td><td>Outcome grading of decisions.</td></tr>
+        <tr><td>5</td><td>The kill bar, the contradiction section in review, and the session index.</td></tr>
+        <tr><td>6</td><td>The dispatch call site.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Two seam touches, ever</div><pre><span class="c"># The record's seam with the product changes</span>
+<span class="c"># at exactly two points. A contract change</span>
+<span class="c"># reopens Stage 0 and needs a new signature.</span>
+
+<span class="k">Stage 2</span>   derive_jobs
+<span class="k">Stage 6</span>   the dispatch call site</pre></div>
+  </div></div>
+</section>
+
+<!-- Roadmap -->
+<section class="doc" id="roadmap">
+  <div class="prose">
+    <h2>Roadmap</h2>
+    <p>The build follows one rule: a milestone is done when its evidence exists, not when its code merges.</p>
+    <h3>Done</h3>
+    <div class="scroll"><table>
+      <tbody>
+        <tr><td>2026-10-25</td><td>Scaffold: the ruled shape, one binary, the decision sequence, ten self-tested checks.</td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>2026-10-26</td><td>IR v0.3.0: one record shape for both runtimes, with fixtures and a validator.</td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>2026-10-26</td><td>Spine wire and store: Postgres, row-level security forced, append-only runtime role.</td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>2026-10-26</td><td>The frontmatter parser that both runtimes share.</td><td><span class="badge built">Built</span></td></tr>
+        <tr><td>2026-10-26</td><td>Session readers for Claude Code and Codex, and <code>coldworks sessions</code>.</td><td><span class="badge built">Built</span></td></tr>
+      </tbody>
+    </table></div>
+    <h3>Waiting on a signature</h3>
+    <ul>
+      <li>The pre-registration of the Stage-5 bars and the bars for the smallest honest tests. No rung-0 code merges before it.</li>
+      <li>Acceptance of decision records 0001 to 0004.</li>
+      <li>A ruling on the dependency the Cursor session reader needs.</li>
+    </ul>
+    <h3>Next, in order</h3>
+    <ol>
+      <li>The correlator: join sessions to merges and compute the cross-run re-derivation share.</li>
+      <li>The stale-instruction line.</li>
+      <li>The brief, after its bar is signed.</li>
+      <li><code>engine/</code> on <code>cel-go</code>.</li>
+      <li><code>reviews/</code>, rebuilt last.</li>
+    </ol>
+    <h3>Later</h3>
+    <p>Local decision derivation from self-declaring files, the never-reopen push in dogfood only, organization inheritance, the web shell, a load test at the stated scale, and the Phase 3 publication.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">coldworks sessions · smoke test, 2026-10-26</div><pre><span class="c"># one machine; files / complete / linkable</span>
+<span class="k">claude-code</span>   <span class="n">136</span> / <span class="n">136</span> / <span class="n">95</span>
+<span class="k">codex</span>          <span class="n">72</span> /  <span class="n">72</span> / <span class="n">37</span>
+
+<span class="c"># linkable: carries the fields the session</span>
+<span class="c"># link needs to join a merge</span></pre></div>
+  </div></div>
+</section>
+
+<!-- Future state -->
+<section class="doc" id="future">
+  <div class="prose">
+    <h2>Future state</h2>
+    <p>The target state is a day months into use. Every figure in it is illustrative. <span class="badge proposed">Proposed</span></p>
+    <ul>
+      <li><strong>Day one, before any hook.</strong> One command reads your agent's session files, joins them to git, and prints the share of sessions that re-read what an earlier merge settled.</li>
+      <li><strong>Session start.</strong> Three lines appear before you type: a settled decision, an available recipe, and a stale instruction line.</li>
+      <li><strong>Mid-session.</strong> The agent proposes reversing a settled decision. One line names the decision and its evidence. You say reopen, or the agent drops the change.</li>
+      <li><strong>Pull request.</strong> The check run says the change crosses no settled decision and how many review classes checks answered.</li>
+      <li><strong>A teammate's session.</strong> Their brief carries your morning's decision, because the merged pull request carried the decision file.</li>
+      <li><strong>A revert.</strong> The record flips the decision to contested on its own, and every brief on that service says so the next day.</li>
+      <li><strong>A new repository.</strong> It starts with the organization's settled decisions at advisory force. Its first corroborating merge settles each one locally.</li>
+    </ul>
+    <h3>Built for scale</h3>
+    <p>The design targets an organization with 2,000 repositories, 50,000 sessions a month, and 200,000 merges a year. It adds no broker, cache, or second datastore until a named Postgres measurement crosses a pre-registered threshold. A load test at that shape runs before the organization rung opens.</p>
+    <h3>What never appears</h3>
+    <p>An inbox, a memory you edit, a dashboard of agents in flight, a dollar figure, a second product name, or a page you have to keep open.</p>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">Day one report</div><pre><span class="c"># illustrative</span>
+41 sessions in 30 days
+23 re-read paths an earlier merge settled
+ 2 lines in AGENTS.md name files that no
+   longer exist</pre></div>
+    <div class="panel"><div class="head">Scale rules kept from day one</div><pre>tenancy      from facts, never asserted
+events       append-only, idempotent keys
+payloads     closed per type version
+security     RLS forced on every table
+series key   (repo_id, pr_number, merge_sha)
+brief        under ~2k tokens, no model
+sessions     captured at end, before purge
+web          reads a versioned contract</pre></div>
+  </div></div>
+</section>
+
+<!-- Ideas -->
+<section class="doc wide" id="ideas">
+  <div class="prose">
+    <h2>Proposed ideas</h2>
+    <p>The unified-product pass of 2026-10-18 proposes eight additions. None is signed.</p>
+    <div class="cards">
+      <div class="card"><span class="badge proposed">Proposed</span><h3>The session link as the cross-run key</h3><p>A commit trailer joins each merge to the sessions behind it, across tools, and yields the cross-run re-derivation share.</p></div>
+      <div class="card"><span class="badge gated">Gated on the kill bar</span><h3>The never-reopen push</h3><p>When a session approaches a settled decision's evidence, the hook pushes the decision, its date, and its status before the model reasons.</p></div>
+      <div class="card"><span class="badge proposed">Proposed</span><h3>Recipe and check as twins</h3><p>A check decides; a recipe constructs. Both sit in one registry, are signed after shadow, and carry a subtraction and a deopt.</p></div>
+      <div class="card"><span class="badge proposed">Proposed</span><h3>Looking and doing as brackets</h3><p>Shown beside <code>T</code>, never a pass condition, so the looking share can fall even where judgment never cools.</p></div>
+      <div class="card"><span class="badge proposed">Proposed</span><h3>Organization inheritance</h3><p>An <code>inherited</code> source capped at advisory. A repository's own commit corroborates it into a new settled record.</p></div>
+      <div class="card"><span class="badge built">Partly built</span><h3>Session readers first</h3><p>Readers for Claude Code and Codex make one engineer the first user. Cursor waits on a dependency ruling.</p></div>
+      <div class="card"><span class="badge proposed">Proposed</span><h3>Signed derivation attestations</h3><p>Every derived record carries an in-toto attestation: derived from commits X..Y by tool T at version V.</p></div>
+      <div class="card"><span class="badge proposed">Proposed</span><h3>The stale-instruction line</h3><p>At every session boot, name the lines in <code>CLAUDE.md</code>, <code>AGENTS.md</code>, and <code>.cursorrules</code> that reference code missing at HEAD.</p></div>
+    </div>
+    <h3>Captured since, not scoped</h3>
+    <div class="cards">
+      <div class="card"><span class="badge archived">Idea · 2026-09-03</span><h3>Landed as reviewed</h3><p>A deterministic merge-time certificate that the tree on main equals the tree that was reviewed, naming any file that differs.</p></div>
+      <div class="card"><span class="badge archived">Idea · 2026-10-22</span><h3>The graph as a read-side projection</h3><p>Nodes are records and edges are links, supersession, and overlap. A read function, not a graph database.</p></div>
+      <div class="card"><span class="badge archived">Idea · 2026-10-23</span><h3>The agent surface</h3><p>Derive what a repository tells agents to obey or run, attest it, and push a diff at boot. The first census missed its bar; a rug-pull probe reports 2026-12-18.</p></div>
+      <div class="card"><span class="badge archived">Idea · 2026-10-25</span><h3>Records that have no API</h3><p>A browser-mode recipe that replays an accepted procedure against a site with no API, with a refusal rule.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Gates -->
+<section class="doc" id="gates">
+  <div class="prose">
+    <h2>Unproven, carried as gates</h2>
+    <p>Each unproven claim enters the repository as a pre-registered bar with a kill condition, never as a feature. These are the open ones:</p>
+    <ul>
+      <li>The density of compilable judgment on an export nobody in-house wrote.</li>
+      <li>The Stage-5 kill bar for the brief.</li>
+      <li>A recipe's net saving against a strong baseline.</li>
+      <li>The cross-run re-derivation share, the never-reopen collision rate, and session reader coverage.</li>
+      <li>A census unit for <code>T</code>'s denominator, and for looking and doing.</li>
+      <li>A hotfix detector, and the lift of outcome grading over a plain currency check.</li>
+    </ul>
+    <h3>The smallest honest tests</h3>
+    <p>Each test is cheap, has its bar written before it runs, and can come out wrong:</p>
+    <ol>
+      <li><strong>The cross-run key.</strong> Correlate sessions to merges. Control: shuffle the assignment and confirm the share collapses.</li>
+      <li><strong>The collision rate.</strong> Count pull requests that touched a settled span without citing it. Bar: at least one per 50 merges.</li>
+      <li><strong>Reader coverage.</strong> Bar: a majority of files from each tool read end to end.</li>
+      <li><strong>The kill bar.</strong> The brief against token-matched context stuffing, a committed <code>AGENTS.md</code>, and the same brief with force hidden. If it fails, the deriver becomes an <code>AGENTS.md</code> generator.</li>
+      <li><strong>The rung-0 count.</strong> Strangers who ran the report and ran it again, at day 30.</li>
+      <li><strong>Grading's own case.</strong> Count reverts that left the cited span unchanged. If that count is near zero, outcome grading buys nothing over a currency check.</li>
+    </ol>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">The first number is flattering</div><pre><span class="c"># Why every figure is census-pinned with a</span>
+<span class="c"># control that can fail:</span>
+
+22.6%  ──one mutation──▶  58.4%
+       <span class="c">13 controls stayed green</span>
+
+<span class="c"># A metric that can't come out wrong on a</span>
+<span class="c"># known-wrong input isn't evidence.</span></pre></div>
+  </div></div>
+</section>
+
+<!-- Not build -->
+<section class="doc" id="not-build">
+  <div class="prose">
+    <h2>What not to build</h2>
+    <p>The stop list binds every rung:</p>
+    <ul>
+      <li>No inbox, accept button, or judgment queue. Commitment is the decision.</li>
+      <li>No hosted capture or live watcher of production agents.</li>
+      <li>No dollars or savings claims; findings and the number only.</li>
+      <li>No "knowledge graph" as a product noun. It describes how the record is organized.</li>
+      <li>No pooled source code across tenants, ever. Outcomes might pool, with consent.</li>
+      <li>No learning loop that feeds evidence back into a prompt.</li>
+      <li>No organization inheritance at settled force.</li>
+      <li>No feature without the moment in the experience that it serves.</li>
+    </ul>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">What the archived work proved failed</div><pre><span class="k">judgment queue</span>    clicked through unread
+<span class="k">session cache</span>     wrong on 17% to 45% of hits
+<span class="k">edit-based fix</span>    6 of 11 "resolved" false
+<span class="k">reader re-read</span>    ~60% flip on identical heads
+<span class="k">prose extraction</span>  precision 0.463</pre></div>
+  </div></div>
+</section>
+
+<!-- Decisions -->
+<section class="doc" id="decisions">
+  <div class="prose">
+    <h2>Decision records</h2>
+    <p>The repository starts a new decision sequence at 0001. Ids are contiguous and claimed by the pull request that adds the file. A record is never edited after acceptance; a change is a new record that supersedes it. Acceptance is the founder's merge.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Id</th><th>Title</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>0001</td><td>A fresh repository, and what it carries from the archived ones</td><td><span class="badge proposed">Proposed</span></td></tr>
+        <tr><td>0002</td><td>IR v0.3.0, one record shape for both runtimes</td><td><span class="badge proposed">Proposed</span></td></tr>
+        <tr><td>0003</td><td>The store's isolation: tenant-scoped idempotency and row-level security forced on every table</td><td><span class="badge proposed">Proposed</span></td></tr>
+        <tr><td>0004</td><td>The frontmatter parser reads a closed subset, in one package for both runtimes</td><td><span class="badge proposed">Proposed</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="panel-col"><div class="sticky">
+    <div class="panel"><div class="head">docs/decisions frontmatter</div><pre><span class="k">id</span>: <span class="n">0004</span>
+<span class="k">title</span>: <span class="s">The frontmatter parser reads a closed subset</span>
+<span class="k">status</span>: <span class="s">proposed</span>   <span class="c"># | accepted | superseded | rejected</span>
+<span class="k">date</span>: <span class="s">2026-10-26</span>
+<span class="k">supersedes</span>: []
+<span class="k">superseded_by</span>: null</pre></div>
+  </div></div>
+</section>
+
+<footer>
+  Coldworks design reference, as of 2026-10-26. This page summarizes design records; where it and a signed record disagree, the signed record governs.
+</footer>
+</main>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.side a[href^="#"]'));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        var a = byId[e.target.id];
+        if (a) a.classList.add('active');
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    document.querySelectorAll('section.doc[id]').forEach(function (s) { io.observe(s); });
+  }
+  var side = document.getElementById('side');
+  var btn = document.getElementById('menu-btn');
+  btn.addEventListener('click', function () {
+    var open = side.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  links.forEach(function (a) {
+    a.addEventListener('click', function () { side.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); });
+  });
+})();
+</script>
+</body>
+</html>
